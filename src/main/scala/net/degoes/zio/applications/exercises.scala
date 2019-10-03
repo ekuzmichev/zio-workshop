@@ -18,17 +18,17 @@ import net.degoes.zio.applications.hangman.GuessResult.Lost
 import java.util.concurrent.ConcurrentHashMap
 
 object example extends App {
-  def run(args: List[String]) = {
+  def run(args: List[String]) =
     (for {
       _ <- putStrLn("What is ur name?!")
 
       name <- getStrLn
-      _ <- putStrLn(s"Hello, $name")
+      _    <- putStrLn(s"Hello, $name")
     } yield 0) orElse ZIO.succeed(1)
-  }
 }
 
 object sharding extends App {
+
   /**
    * Create N workers reading from a Queue, if one of them fails,
    * then wait for the other ones to process the current item, but
@@ -70,12 +70,12 @@ object hangman extends App {
    */
   lazy val myGame: ZIO[Console with Random, IOException, Unit] =
     for {
-      _ <- putStrLn("Welcome")
-      word <- chooseWord
-      name <- getName
+      _     <- putStrLn("Welcome")
+      word  <- chooseWord
+      name  <- getName
       state = State(name, Set(), word)
-      _ <- renderState(state)
-      _ <- gameLoop(state)
+      _     <- renderState(state)
+      _     <- gameLoop(state)
     } yield ()
 
   final case class State(name: String, guesses: Set[Char], word: String) {
@@ -138,12 +138,12 @@ object hangman extends App {
    */
   lazy val getChoice: ZIO[Console, IOException, Char] =
     for {
-      _ <- putStrLn("Enter your guess letter:")
+      _    <- putStrLn("Enter your guess letter:")
       line <- getStrLn
       guess <- line.trim.toLowerCase.toList match {
-        case char :: Nil if char.isLetterOrDigit => ZIO.succeed(char)
-        case _ => getChoice
-      }
+                case char :: Nil if char.isLetterOrDigit => ZIO.succeed(char)
+                case _                                   => getChoice
+              }
     } yield guess
 
   /**
@@ -152,7 +152,7 @@ object hangman extends App {
    */
   lazy val getName: ZIO[Console, IOException, String] =
     for {
-      _ <- putStrLn("Enter your name:")
+      _    <- putStrLn("Enter your name:")
       name <- getStrLn
     } yield name
 
@@ -1049,10 +1049,10 @@ object hangman extends App {
    */
   def runScenario(testData: TestData): IO[IOException, TestData] =
     for {
-      ref <- Ref.make(testData)
+      ref        <- Ref.make(testData)
       testModule = TestModule(ref)
-       _ <- myGame.provide(testModule)
-      data <- ref.get
+      _          <- myGame.provide(testModule)
+      data       <- ref.get
     } yield data
 
   case class TestData(
