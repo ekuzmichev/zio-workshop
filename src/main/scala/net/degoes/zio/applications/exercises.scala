@@ -17,19 +17,31 @@ import net.degoes.zio.applications.hangman.GuessResult.Unchanged
 import net.degoes.zio.applications.hangman.GuessResult.Lost
 import java.util.concurrent.ConcurrentHashMap
 
+object example extends App {
+  def run(args: List[String]) = {
+    (for {
+      _ <- putStrLn("What is ur name?!")
+
+      name <- getStrLn
+      _ <- putStrLn(s"Hello, $name")
+    } yield 0) orElse ZIO.succeed(1)
+  }
+}
+
 object sharding extends App {
   /**
-   * Create N workers reading from a Queue, if one of them fails, 
-   * then wait for the other ones to process the current item, but 
+   * Create N workers reading from a Queue, if one of them fails,
+   * then wait for the other ones to process the current item, but
    * terminate all the workers.
    */
-  def shard[R, E, A](queue: Queue[A], n: Int, worker: A => ZIO[R, E, Unit]): ZIO[R, E, Unit] = 
+  def shard[R, E, A](queue: Queue[A], n: Int, worker: A => ZIO[R, E, Unit]): ZIO[R, E, Unit] =
     ???
 
   def run(args: List[String]) = ???
 }
 
 object alerting {
+
   import zio.stm._
 
   final case class Metrics(
@@ -43,10 +55,10 @@ object alerting {
   def sendSystemEmail(to: Email, subject: String, body: String): UIO[Unit] = ???
 
   /**
-   * Use STM to alert an engineer when the number of hourly errors exceeds 
+   * Use STM to alert an engineer when the number of hourly errors exceeds
    * 100.
    */
-  def alertEngineer(metrics: Metrics, onDuty: TRef[Engineer]): UIO[Unit] = 
+  def alertEngineer(metrics: Metrics, onDuty: TRef[Engineer]): UIO[Unit] =
     ???
 }
 
@@ -57,7 +69,14 @@ object hangman extends App {
    * `Random` effects.
    */
   lazy val myGame: ZIO[Console with Random, IOException, Unit] =
-    ???
+    for {
+      _ <- putStrLn("Welcome")
+      word <- chooseWord
+      name <- getName
+      state = State(name, Set(), word)
+      _ <- renderState(state)
+      _ <- gameLoop(state)
+    } yield ()
 
   final case class State(name: String, guesses: Set[Char], word: String) {
     final def failures: Int = (guesses -- word.toSet).size
@@ -117,18 +136,31 @@ object hangman extends App {
    * Implement an effect that gets a single, lower-case character from
    * the user.
    */
-  lazy val getChoice: ZIO[Console, IOException, Char] = ???
+  lazy val getChoice: ZIO[Console, IOException, Char] =
+    for {
+      _ <- putStrLn("Enter your guess letter:")
+      line <- getStrLn
+      guess <- line.trim.toLowerCase.toList match {
+        case char :: Nil if char.isLetterOrDigit => ZIO.succeed(char)
+        case _ => getChoice
+      }
+    } yield guess
 
   /**
    * Implement an effect that prompts the user for their name, and
    * returns it.
    */
-  lazy val getName: ZIO[Console, IOException, String] = ???
+  lazy val getName: ZIO[Console, IOException, String] =
+    for {
+      _ <- putStrLn("Enter your name:")
+      name <- getStrLn
+    } yield name
 
   /**
    * Implement an effect that chooses a random word from the dictionary.
    */
-  lazy val chooseWord: ZIO[Random, Nothing, String] = ???
+  lazy val chooseWord: ZIO[Random, Nothing, String] =
+    random.nextInt(Dictionary.length).map(Dictionary(_))
 
   val Dictionary = List(
     "aaron",
@@ -1015,7 +1047,13 @@ object hangman extends App {
    * Implement the `runScenario` method according to its type. Hint: You
    * will have to use `provide` on `TestModule`.
    */
-  def runScenario(testData: TestData): IO[IOException, TestData] = ???
+  def runScenario(testData: TestData): IO[IOException, TestData] =
+    for {
+      ref <- Ref.make(testData)
+      testModule = TestModule(ref)
+       _ <- myGame.provide(testModule)
+      data <- ref.get
+    } yield data
 
   case class TestData(
     output: List[String],
@@ -1060,7 +1098,8 @@ object hangman extends App {
   lazy val testScenario1 = runScenario(Scenario1).flatMap(testData => putStrLn(testData.render))
 
   override def run(args: List[String]): ZIO[Environment, Nothing, Int] =
-    myGame.fold(_ => 1, _ => 0)
+//    myGame.fold(_ => 1, _ => 0)
+    testScenario1.fold(_ => 1, _ => 0)
 }
 
 object parallel_web_crawler {
