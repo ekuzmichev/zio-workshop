@@ -20,8 +20,7 @@ import java.util.concurrent.ConcurrentHashMap
 object example extends App {
   def run(args: List[String]) =
     (for {
-      _ <- putStrLn("What is ur name?!")
-
+      _    <- putStrLn("What is ur name?!")
       name <- getStrLn
       _    <- putStrLn(s"Hello, $name")
     } yield 0) orElse ZIO.succeed(1)
@@ -108,7 +107,20 @@ object hangman extends App {
    * Implement the main game loop, which gets choices from the user until
    * the game is won or lost.
    */
-  def gameLoop(state0: State): ZIO[Console, IOException, Unit] = ???
+  def gameLoop(state0: State): ZIO[Console, IOException, Unit] =
+    for {
+      guess <- getChoice
+      state = state0.addChar(guess)
+      _     <- renderState(state)
+      cont <- guessResult(state0, state, guess) match {
+               case Incorrect => putStrLn(s"Incorrect, ${state.name}!").as(true)
+               case Unchanged => putStrLn(s"Already guessed, ${state.name} $guess!").as(true)
+               case Correct   => putStrLn(s"Congrats, ${state.name}!").as(true)
+               case Lost      => putStrLn(s"Sorry, ${state.name}, you lost. Word was ${state.word}!").as(false)
+               case Won       => putStrLn(s"Congrats, ${state.name}!").as(false)
+             }
+      _ <- if (cont) gameLoop(state) else ZIO.unit
+    } yield ()
 
   def renderState(state: State): ZIO[Console, Nothing, Unit] = {
 
